@@ -13,6 +13,8 @@ class RegistryTests(unittest.TestCase):
     def test_duplicate_and_traversal_are_rejected(self):
         for rows in [[{'name':'../escape'}],[{'name':'same'},{'name':'same'}]]:
             with self.assertRaises(ValueError):self.check(rows)
+    def test_run_command_rejects_shell_string(self):
+        with self.assertRaises(ValueError):self.check([{'name':'app','run_command':'python3 run.py'}])
     def test_commands_are_argument_lists(self):
         with self.assertRaises(ValueError):self.check([{'name':'demo','test_command':'echo shell'}])
         self.assertEqual(len(self.check([{'name':'demo','test_command':['cargo','test']} ])),1)

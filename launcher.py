@@ -17,9 +17,10 @@ def load_registry(root):
         name = repo['name']
         if not name or Path(name).name != name or name in ('.', '..'):
             raise ValueError('invalid repository path')
-        command = repo.get('test_command')
-        if command is not None and (not isinstance(command, list) or not command or not all(isinstance(x, str) for x in command)):
-            raise ValueError('test_command must be an argv list')
+        for field in ('test_command', 'run_command'):
+            command = repo.get(field)
+            if command is not None and (not isinstance(command, list) or not command or not all(isinstance(x, str) and x for x in command)):
+                raise ValueError(field + ' must be an argv list')
     return repos
 
 
@@ -28,6 +29,7 @@ def main(argv=None):
     parser.add_argument('--root', type=Path, default=Path(__file__).resolve().parent.parent)
     sub = parser.add_subparsers(dest='action', required=True)
     sub.add_parser('list')
+    run = sub.add_parser('run'); run.add_argument('repository')
     test = sub.add_parser('test'); test.add_argument('repository', nargs='?', default='all')
     serve = sub.add_parser('serve'); serve.add_argument('repository'); serve.add_argument('--port', type=int, default=8000)
     args = parser.parse_args(argv)
@@ -40,6 +42,11 @@ def main(argv=None):
     chosen = repos if getattr(args, 'repository') == 'all' else [r for r in repos if r['name'] == args.repository]
     if not chosen:
         parser.error('unknown repository')
+    if args.action == 'run':
+        command = chosen[0].get('run_command')
+        if command is None:
+            parser.error('repository has no declared process command')
+        return subprocess.run(command, cwd=root / chosen[0]['name']).returncode
     if args.action == 'serve':
         repo = chosen[0]
         if not repo.get('web_entry'):
